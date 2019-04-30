@@ -1,0 +1,1377 @@
+---
+title: "R Shiny Tutorial"
+subtitle: "A Quick Introduction to Shiny (v1.2.0)"
+author: Derry Leng
+date: Updated 12/04/2019
+output:
+  html_document:
+    theme: readable
+    toc: TRUE
+    toc_depth: 4
+    toc_float: TRUE
+    df_print: paged
+runtime: shiny
+---
+
+<style type='text/css'>
+.indent {
+  text-indent: 50px;
+}
+.main-container {
+  max-width: 100% !important;
+  margin-left: auto;
+  margin-right: auto;
+}
+h1 {
+  font-size: 36px;
+  font-family: Tungsten-Semibold;
+  color: rgb(84,87,89);
+}
+h2 {
+  font-size: 24px;
+  font-family: UnitRoundedOT;
+  color: rgb(214,35,103);
+}
+<!-- h2:before { -->
+<!--   content: "\a\a\a"; -->
+<!--   white-space: pre; -->
+<!-- } -->
+h3 {
+  font-size: 20px;
+  font-family: UnitRoundedOT-Light;
+  color: rgb(84,87,89);
+}
+h4 {
+  font-size: 19px;
+  font-family: UnitRoundedOT-Light;
+  color: rgb(84,87,89);
+}
+h5 {
+  font-size: 19px;
+  font-family: UnitRoundedOT-Light;
+  color: rgb(130,23,65);
+}
+p {
+  font-size: 18px;
+  font-family: UnitRoundedOT-Light;
+  color: rgb(84,87,89);
+  text-align: justify;
+}
+li {
+  font-size: 18px;
+  font-family: UnitRoundedOT-Light;
+  color: rgb(84,87,89);
+}
+
+</style>
+
+## 1 Introduction
+
+This is a quick introduction into Shiny - the interactive web application development package for R. By the end you should have a good grasp on how to create your very own stunning web applications using nothing but R, as well as get started with CSS and JavaScript - which will help you add that extra something to your Shiny apps, making them truly unique and presentable.
+
+This course assumes that you have a basic knowledge of how to use R conventionally:
+
+- Installing and using packages;
+
+- Creating variables, functions and plots;
+
+- Manipulation of data in strings, vectors and data frames;
+
+- Using conditional statements and loops.
+
+---
+
+## 2 Hello Shiny!
+
+In the true spirit of crash coursing, let's start by making your very own (albeit simple) Shiny app!
+
+First off we import the package:
+
+```{r}
+library(shiny)
+```
+
+Now, we define the two essential parts of every Shiny app, the UI and the Server:
+
+```{r, eval=F}
+ui <- fluidPage()
+
+server <- function(input, output) {}
+```
+
+The UI is an object which works as the frontend of your app, all the elements you add to your UI are essentially stylish HTML elements in a nice wrapper that R can understand. Here **fluidPage()** creates a blank HTML document, which enables you to scroll down as you populate your document (hence the *fluid* part).
+
+The Server is a function that handles all the backend stuff - display of text and images and reactivity are all managed from here. The best way to illustrate this is with a cheeky example:
+
+```{r}
+ui <- fluidPage(
+  textOutput(outputId = "randomtext"),
+  plotOutput(outputId = "randomplot", width = "50%")
+)
+
+server <- function(input, output) {
+  output$randomtext <- renderText("Hello Shiny!")
+  output$randomplot <- renderPlot(hist(rnorm(100)))
+}
+```
+
+In the UI, we define two output elements, one for text and one for plots, their **outputId** is the most essential part as it is what we use to reference said elements in the Server.
+
+In the Server, we define what we want to show for our output elements, we do this using **output$** followed by their **outputId**. We cannot directly assign text or plots to these, we must specify exactly what we wish to render in the element by wrapping our text or plot using **renderText** or **renderPlot** respectively. This is useful as if you're doing all whole bunch of stuff (such as assigning variables and so on), Shiny will know what you actually want to output at the end.
+
+E.g. we could've written the **server** above as:
+
+```{r}
+server <- function(input, output) {
+
+  output$randomtext <- renderText({
+    "Hello Shiny!"
+  })
+
+  output$randomplot <- renderPlot({
+    x <- 100
+    y <- rnorm(x)
+    hist(y)
+  })
+
+}
+```
+
+Which would do the exact same thing as before, notice we're using curly brackets to enclose our code, this is useful for differentiating between our code and any extra options we may have for the render function (especially when we've written a lot of code).
+
+Finally we use an extra function called **shinyApp** to bring the UI and the Server together, when this is required will be covered in the next section.
+
+```{r, eval=F}
+shinyApp(ui = ui, server = server)
+```
+
+```{r, echo=F, eval=T}
+shinyApp(ui = ui, server = server, options = list(height = 450))
+```
+
+---
+
+## 3 Structure
+
+In this section we will tackle very dry topics such as whether to have one single R script for your app or two, or even more than two if you're feeling dangerous.
+
+The app we saw in the previous section can be written into a single script, which can be run directly if we're using RStudio using the **Run App** in the top right of your source window (you may have select all and run manually the first time for RStudio to recognise you've written a Shiny app).
+
+But we don't have to open up RStudio every time we want to run your app, we can just run by writing in your R console:
+
+```{r, eval=F}
+shiny::runApp("~/Hello Shiny")
+```
+
+Granted, to do so we must name our script as **app.R** and put it in its own special folder call **Hello Shiny**.
+
+But why on Earth do you need a special folder for one R script? Well, it's because we can split up UI and Server into separate R scripts. We must call them **ui.R** and **server.R** so Shiny is not confused, this does mean we won't need to use **shinyApp** if we're doing it this way.
+
+##### ui.R
+```{r}
+ui <- fluidPage(
+  plotOutput("swag")
+)
+```
+
+##### server.R
+```{r}
+library(ggplot2)
+
+g <- ggplot(economics, aes(x=date)) +
+  geom_line(aes(y=uempmed, col="Median Duration of Unemployment (weeks)")) +
+  geom_line(aes(y=psavert, col="Personal Savings Rate (%)")) +
+  labs(title="US Economic Time Series", x="Year", y=NULL, color=NULL) +
+  theme_bw() + theme(legend.position="bottom")
+
+server <- function(input, output) {
+  output$swag <- renderPlot(g)
+}
+```
+
+In addition to these two R scripts, we can have as many as we want, such as having a **global.R** for all our data importing, cleaning and graph plotting, making sure that the scripts are correctly linked:
+
+```{r, eval=F}
+
+```
+
+##### myscript.R
+```{r}
+library(ggplot2) # This is not a ggplot crash course
+
+g <- ggplot(economics, aes(x=date)) +
+  geom_line(aes(y=uempmed, col="Median Duration of Unemployment (weeks)")) +
+  geom_line(aes(y=psavert, col="Personal Savings Rate (%)")) +
+  labs(title="US Economic Time Series", x="Year", y=NULL, color=NULL) +
+  theme_bw() + theme(legend.position="bottom")
+```
+
+##### ui.R
+```{r}
+ui <- fluidPage(
+  plotOutput("swag")
+)
+```
+
+##### server.R
+```{r, eval=F}
+source("myscript.R", local = T)
+
+server <- function(input, output) {
+  output$swag <- renderPlot(g)
+}
+```
+
+```{r echo=F, eval=T}
+shinyApp(ui = ui, server = server)
+```
+
+Note if we have a script called **global.R**, we need not manually link it using **source("global.R", local = T)** as we have here.
+
+We can put more than just R scripts in your app folder, if we have used external CSS style sheets, JavaScript files or images, we can put them all in a folder called **www**, by default Shiny looks in this folder to find CSS and JavaScript files (refer to the Shiny cheatsheet in the links).
+
+---
+
+## 4 UI basics
+
+In this section we will focus on predefined (read "high-level") layout, input and output elements provided by Shiny which we can use in our UI.
+
+### 4.1 Layout elements
+
+#### 4.1.1 Page
+
+First we can specify what kind of webpage we want to create first:
+
+The best option for most apps is **fluidPage**, which allows us to use **fluidRow** to align elements side-by-side (unless it does not have room) and scale them dynamically to the window width (you can try it now!):
+
+```{r}
+ui <- fluidPage(
+  fluidRow(
+    column(width = 2, textOutput(outputId = "text1")),
+    column(width = 3, textOutput(outputId = "text2")),
+    column(width = 7, plotOutput(outputId = "plot", height = "400px"))
+  )
+)
+
+server <- function(input, output) {
+  output$text1 <- renderText("This column is 2 out of 12 units wide")
+  output$text2 <- renderText("This column is 3 out of 12 units wide")
+  output$plot <- renderPlot(hist(rnorm(100)))
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+It's also good for implementing Shiny's high-level layouts like **sidebarLayout**:
+
+```{r}
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+        textOutput(outputId = "text1"),
+        htmlOutput(outputId = "text2")
+    ),
+    mainPanel(
+      plotOutput(outputId = "plot")
+    )
+  )
+)
+
+server <- function(input, output) {
+  output$text1 <- renderText({
+    "Hello Shiny!"
+  })
+  output$text2 <- renderText({
+    paste("<b>sidebarLayout</b> has the elements <i>sidebarPanel</i> and <i>mainPanel</i>")
+  })
+  output$plot <- renderPlot({
+    hist(rnorm(100))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+Alternatively we can use **fixedPage** along with **fixedRow**, which unlike **fluidPage** and **fluideRow** does not adjust its dimensions to fit the window.
+
+Similarly, **fillPage** along with **fillRow** and **fillCol** adjusts to fit the window, but does not allow for scrolling.
+
+If we want the page to be organised with a nice (possibly a bit bland) navigation bar, we can use **navbarPage**, along with **navbarMenu** and **tabPanel**:
+
+```{r}
+ui <- navbarPage(title = "Shiny App",
+  tabPanel(title = "Example Plot", plotOutput(outputId = "plot", height = "300px")),
+  navbarMenu(title = "More",
+             tabPanel(title = "A Shiny is Born", textOutput(outputId = "text1")),
+             tabPanel(title = "Informative Text", htmlOutput(outputId = "text2"))
+  )
+)
+
+server <- function(input, output) {
+  output$text1 <- renderText({
+    "Hello Shiny!"
+  })
+  output$text2 <- renderText({
+    paste("You should use <i>navbarMenu</i> and <i>tabPanel</i> with <b>navbarPage</b>")
+  })
+  output$plot <- renderPlot({
+    hist(rnorm(100))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+Advanced users who want to manually specify page behaviour using custom CSS can use **bootstrapPage**.
+
+#### 4.1.2 Layouts and Panels
+
+There are many high-level layout elements called layouts and even higher-level elements called panels which Shiny provides, using these saves us from making them manually using CSS/JavaScript, these include:
+
+##### Layouts
+
+- **flowLayout** - Arranges all elements from left to right, top to bottom, works well with elements of fixed pixel size;
+
+- **sidebarLayout** - You guessed it, it has a sidebar;
+
+- **splitLayout** - Lays out elements horizontally, an alternative to using **fluidRow** with **columns**;
+
+##### Panels
+
+- **absolutePanel** - Panel with absolute positioning (does not move with window size change);
+
+- **conditionalPanel** - Panel which is only displayed given certain conditions;
+
+- **headerPanel**, **titlePanel** - Creates generic looking headers and titles;
+
+- **inputPanel** - Generic wrapper for you to put your input elements in;
+
+- **sidebarPanel**, **mainPanel** - Self-explanatory panels used with **sidebarLayout**;
+
+- **tabsetPanel**, **tabPanel** - Creates a tabset (similar to **navbarPage** except not for the whole page);
+
+- **wellPanel** - The most generic panel you'll ever see (same as Bootstrap's *well* CSS class).
+
+Users with more knowledge on CSS and JavaScript will no doubt avoid using these in favour of making custom layout elements which enhances both their form and function, but these are still useful when we're making something simple or we're not too fussed.
+
+### 4.2 Input Elements
+
+Shiny apps would simply be a bland webpage without the ability to process inputs, here we'll introduce some of the basic input elements, which we'll use later on:
+
+##### ui.R
+```{r}
+ui <- fluidPage(
+  fluidRow(
+
+    column(6,
+           wellPanel(
+             selectInput(inputId = "vars",
+                         label = "Select variables to display",
+                         choices = colnames(economics)[-c(1)],
+                         selected = c("psavert", "uempmed"),
+                         multiple = TRUE),
+             dateRangeInput(inputId = "daterange",
+                            label = "Select date range",
+                            start = min(economics$date),
+                            end = max(economics$date),
+                            min = min(economics$date),
+                            max = max(economics$date),
+                            format = "M yyyy",
+                            startview = "year",
+                            separator = " - "),
+             radioButtons(inputId = "dateformat",
+                          label = "Date format",
+                          choices = c("M yyyy", "M yy", "mm/yyyy"),
+                          inline = TRUE)
+           )
+    ),
+
+    column(6,
+           wellPanel(
+             textInput(inputId = "title",
+                       label = "Add title text",
+                       value = "US Economic Time Series"),
+             checkboxGroupInput(inputId = "grid",
+                                label = "Grid options",
+                                choices = c("Horizontal", "Vertical"),
+                                inline = TRUE),
+             numericInput(inputId = "linesize",
+                          label = "Line size",
+                          value = 1,
+                          min = 1,
+                          max = 8,
+                          step = 1,
+                          width = 100),
+             actionButton(inputId = "goplot", label = "Update Plot")
+           )
+    )
+
+  )
+)
+
+server <- function(input, output) {}
+shinyApp(ui = ui, server = server, options = list(height = 320))
+```
+
+### 4.3 Output Elements (and Rendering Functions)
+
+We've seen a few examples of output elements already and their usage is fairly straightforward so we'll take a brief look at them here, take note of the rendering function paired with it on the Server side:
+
+```{r, echo=F, eval=T}
+suppressMessages(library(ggplot2))
+suppressMessages(library(plotly))
+```
+
+```{r}
+someData <- rnorm(100)
+someText <- "Deceptively boring text"
+
+ui <- fluidPage(
+  splitLayout(
+      plotOutput("plot"),
+      plotlyOutput("plotly", width="95%")
+  ),
+  htmlOutput("html"),
+  uiOutput("ui")
+)
+
+server <- function(input, output) {
+  output$plot <- renderPlot(hist(someData)) # Can be used with base plots or ggplot2
+  output$plotly <- renderPlotly({
+    plot_ly(x=someData, type = "histogram") %>% config(displayModeBar = F) # from library(plotly)
+  }) # Only for plot.ly outputs
+  output$html <- renderText({"<b>Just</b> <span style='background-color:pink'>some</span>
+                             <a href=\"https://en.wikipedia.org/wiki/HTML\">HTML</a>
+                             <span style='border:1px solid Red;'>text</span>"})
+  output$ui <- renderUI(textOutput("text"))
+  output$text <- renderText(someText) # textOutput was generated by uiOutput!
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 450))
+```
+
+We see that the very last output element we used was **uiOutput**, which allowed us to output a new UI element. It doesn't seem too useful in this example but it certainly opens up the possibly for conditionally displaying UI, such as only displaying text when the user presses a button. We will look at interactive elements in depth in the next two sections.
+
+---
+
+## 5 Reactivity
+
+Now we've looked at input elements and output elements, let's look at how to make them work together to produce an interactive app.
+
+### 5.1 Simple Reactivity
+
+#### 5.1.1 Source -> Endpoint
+
+Let's start simple and modify our Hello Shiny! app to allow us to change how many normal random variables we generate:
+
+```{r}
+ui <- fluidPage(
+  fluidRow(
+    column(6, sliderInput("slider", "Choose value for x", min=1, max=1000, value=100)),
+    column(6, plotOutput("randomplot"))
+  )
+)
+
+server <- function(input, output) {
+  output$randomplot <- renderPlot({
+    x <- input$slider
+    hist(rnorm(x))
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+The plot is redrawn every time the value of our slider changes, this is reactivity in a nutshell. However, if we tried to run this code with **x <- input$slider** outside of the **renderPlot** function, we'll get an error. The values of input elements can and will change and so they must be used within functions which can observe their changes and react accordingly.
+
+#### 5.1.2 Source -> Conductor -> Endpoint
+
+One of these the reactive function you need to wrap your inputs with is **observe**, it executes all the expressions contained within automatically when the reactive sources inside (called dependencies) changes. It's the basic wrapper for all your reactive expressions which do not require special events for them to execute. So we could also write the Server above as:
+
+```{r}
+server <- function(input, output) {
+  observe({
+    x <- input$slider
+    output$randomplot <- renderPlot({
+      hist(rnorm(x))
+    })
+  })
+}
+```
+
+The **output\$randomplot** of this app directly relies on the value of **input\$slider** and redraw the plot every time its value changes. But what if we don't want it to change immediately? Maybe we'd like to redraw the plot only when we push a button, which will require us to have an extra reactive element in between the input and output. This is a good time to introduce some dry technical terms so we can better illustrate where we're going:
+
+- **Reactive source** - Input elements, i.e. everything referred to in the Server with **input$**
+
+- **Reactive endpoint** - Output elements, i.e. everything referred to in the Server with **output$**
+
+- **Reactive conductor** - A reactive element which we can have between input and output to allow for greater functionality, **observe** is (technically) one of these. We can have as many of these conductors as we want between our input and output elements.
+
+### 5.2 Reactive Conductors
+
+#### 5.2.1 observeEvent & isolate
+
+Let's implement the button to update the plot, we can do this by using the **observeEvent** function, it's similar to **observe** but we can specify special events which trigger its execution, here we have specified such that the code inside only executes when we observe a change in **input$update**, i.e. when it has been pressed:
+
+```{r}
+ui <- fluidPage(
+  fluidRow(
+    column(6,
+           sliderInput("slider", "Choose value for x", min=1, max=1000, value=100),
+           actionButton("update","Update Plot")),
+    column(6, plotOutput("randomplot"))
+  )
+)
+
+server <- function(input, output) {
+  observeEvent(input$update, {
+    output$randomplot <- renderPlot({
+      x <- input$slider
+      hist(rnorm(x))
+    })
+  })
+}
+
+shinyApp(ui = ui, server = server)
+```
+
+Oh no! Notice that after we press the button, whenever we next change the slider the plot will update without waiting for us to press the button, why does that happen? Remember we mentioned that **renderPlot** also functions as a reactive function like **observe**, so it will execute whenever its dependencies change (namely **input\$slider**). There are two ways to fix this issue, one way is to move the line **x <- input\$slider** outside of **renderPlot**, so that **renderPlot** no longer observes changes in **input$slider**:
+
+```{r}
+server <- function(input, output) {
+  observeEvent(input$update, {
+    x <- input$slider
+    output$randomplot <- renderPlot({
+      hist(rnorm(x))
+    })
+  })
+}
+```
+
+Alternatively, we can use an **isolate** wrapper around any reactive sources we don't want the reactive function to be dependent on:
+
+```{r}
+server <- function(input, output) {
+  observeEvent(input$update, {
+    output$randomplot <- renderPlot({
+      isolate(x <- input$slider)
+      hist(rnorm(x))
+    })
+  })
+}
+```
+
+```{r echo=F, eval=T}
+shinyApp(ui = ui, server = server)
+```
+
+Knowing this already allows us to make some rather fancy Shiny apps, for example by using the UI elements we made before:
+
+##### ui.R
+```{r}
+ui <- fluidPage(
+  sidebarLayout(
+
+    sidebarPanel(
+      selectInput("vars", "Select variables to display",
+                  choices = colnames(economics)[-c(1)],
+                  selected = c("psavert", "uempmed"),
+                  multiple = TRUE),
+      dateRangeInput("daterange", "Select date range",
+                     start = min(economics$date),
+                     end = max(economics$date),
+                     min = min(economics$date),
+                     max = max(economics$date),
+                     format = "M yyyy",
+                     startview = "year",
+                     separator = " - "),
+      radioButtons("dateformat", "Date format",
+                   choices = c("M yyyy", "M yy", "mm/yyyy"),
+                   inline = TRUE),
+      textInput("title", "Add title text",
+                value = "US Economic Time Series"),
+      checkboxGroupInput("grid", "Grid options",
+                         choices = c("Horizontal", "Vertical"),
+                         selected = c("Horizontal", "Vertical"),
+                         inline = TRUE),
+      numericInput("linesize", "Line size",
+                   value = 1,
+                   min = 1,
+                   max = 8,
+                   step = 1),
+      actionButton("goplot", "Update Plot"),
+      align="center"
+    ),
+
+    mainPanel(
+      plotOutput("plot")
+    )
+
+  )
+)
+```
+
+##### server.R
+```{r}
+server <- function(input, output, session) {
+
+  observeEvent({
+    input$goplot
+  },{
+
+    # Subset data by date range
+    dat <- subset(economics, date >= input$daterange[1] & date <= input$daterange[2])
+
+    # Initialise plot with data
+    g <- ggplot(dat, aes(x=date)) +
+      labs(title=input$title, x="Year", y=NULL, color=NULL) +
+      theme_bw() + theme(legend.text=element_text(size=13),
+                         legend.background=element_blank(),
+                         legend.justification=c(0,1),
+                         legend.position=c(0.01,1.01))
+
+    # Plot selected variables
+    if (length(input$vars) > 0) {
+      for (i in 1:length(input$vars)) {
+        if (input$vars[i] == "psavert") {
+          g <- g + geom_line(aes(y=psavert,
+                                 col="Personal Savings Rate (%)"),
+                             size=input$linesize)
+        } else if (input$vars[i] == "pce") {
+          g <- g + geom_line(aes(y=pce,
+                                 col="Personal Consumption Expenditure (billions of $)"),
+                             size=input$linesize)
+        } else if (input$vars[i] == "unemploy") {
+          g <- g + geom_line(aes(y=unemploy,
+                                 col="No. of Unemployed (thousands)"),
+                             size=input$linesize)
+        } else if (input$vars[i] == "uempmed") {
+          g <- g + geom_line(aes(y=uempmed,
+                                 col="Median Duration of Unemployment (weeks)"),
+                             size=input$linesize)
+        } else if (input$vars[i] == "pop") {
+          g <- g + geom_line(aes(y=pop,
+                                 col="Total Population (thousands)"),
+                             size=input$linesize)
+        }
+      }
+    }
+
+    # Toggling grids
+    if (!("Horizontal" %in% input$grid)) {
+      g <- g + theme(panel.grid.major.y = element_blank(),
+                     panel.grid.minor.y = element_blank())
+    }
+    if (!("Vertical" %in% input$grid)) {
+      g <- g + theme(panel.grid.major.x = element_blank(),
+                     panel.grid.minor.x = element_blank())
+    }
+
+    # Changing x axis date format
+    if (input$dateformat == "M yyyy") {
+      g <- g + scale_x_date(date_labels="%b %Y")
+    } else if (input$dateformat == "M yy") {
+      g <- g + scale_x_date(date_labels="%b '%y")
+    } else if (input$dateformat == "mm/yyyy") {
+      g <- g + scale_x_date(date_labels="%m/%Y")
+    }
+
+    # Finally we render the plot
+    output$plot <- renderPlot({
+      g
+    }, height = function() {
+      # This function sets the height equal to the graph's width (which auto adjusts).
+      session$clientData$output_plot_width
+    })
+
+  })
+
+}
+```
+
+```{r echo=F, eval=T}
+shinyApp(ui = ui, server = server, options = list(height = 580))
+```
+
+There is an extra argument in the Server function called *session*, this is a way for Shiny to use non-input data from the client, of which you can reference using **session\$clientData\$**, we won't cover this in our course, but take a look here if you're interested: https://shiny.rstudio.com/articles/client-data.html
+
+#### 5.2.2 reactive
+
+In the above example we execute everything from subsetting data to rendering the final plot whenever we press the *Update Plot* button, it works well for this example but consider another (cheekily taking inspiration for this one from RStudio's tutorial):
+
+```{r}
+fibbers <- function(n) {
+  # Generates n-th Fibonacci number recursively
+  ifelse(n<3, 1, fibbers(n-1)+fibbers(n-2))
+}
+
+ui <- fluidPage(
+  numericInput("select", "Select n-th Fibonnaci number to display",
+           value=1, min=1, max=100, step=1, width=300),
+  textOutput("fib"),
+  textOutput("invfib")
+)
+
+server <- function(input, output) {
+  observe({
+    output$fib <- renderText(paste("Fibonnaci(n) = ", fibbers(input$select)))
+    output$invfib <- renderText(paste("1/Fibonnaci(n) = ", 1/fibbers(input$select)))
+  })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 120))
+```
+
+Recursive functions are very bad time complexity wise, we start to see significant slowdowns in calculation after the 20th Fibonacci number, and this certainly is not helped by the fact that every time we generate a Fibonacci number, we're doing the calculation twice. We can make this app just a little bit more efficient by modifying our Server to use  **reactive**:
+
+```{r}
+server <- function(input, output) {
+  getFib <- reactive({
+    fibbers(input$select)
+  })
+  observe({
+    output$fib <- renderText(paste("Fibonnaci(n) = ", getFib()))
+    output$invfib <- renderText(paste("1/Fibonnaci(n) = ", 1/getFib()))
+  })
+}
+```
+
+```{r, echo=F, eval=T}
+shinyApp(ui = ui, server = server, options = list(height = 120))
+```
+
+The functionality of **reactive** is exactly the same as **observe** in that we are executing a chunk of code automatically when one of its dependencies change, the key difference is that **reactive** is used to define a callable function which can be used multiple times in the Server. You should see that we're able to get to a few higher Fibbonaci numbers before our app starts slowing down a lot. By using **reactive**, we create a function which is run every time its dependencies are updated, instead of every time the function is called. This means we have essentially halved calculation time! Give yourself a good pat on the back.
+
+### 5.3 Dynamic UI (and reactiveVal)
+
+If we have so far been confident in the use of reactive conductors, then this should be a veritable piece of cake. We've already touched upon **uiOutput**, we can use this in combination with reactive conductors to create a more interactive UI experience. Here we will also introduce another reactive conductor - **reactiveVal**.
+
+We will illustrate their implementation via a very topical text based adventure game in Shiny where you have to get to a meeting on time. (The story texts are hidden but nonetheless you should look not look at the code first if you don't want to spoil the story!)
+
+```{r, echo=F}
+shower <- "You have an important meeting at work today and there is no way you can miss it. So that morning, you wake up at 5am and decide to take a shower, you know that having a good shower will set you up for the whole day, but what temperature should you use?"
+shower_choice <- c("A bit too hot","Icy cold","Just right")
+hot <- "The shower was a bit too hot for comfort but you struggle through it, spending as little time as necessary (cleanliness +80). After the shower, you stroll downstairs for some breakfast."
+cold <- "Nothing like a cold shower on a cold day to put your life into perspective, you had the choice to have a nice warm shower but you chose for an instant to experience the life of a Siberian reindeer herder, you realise that this is truly the ultimate expression of radical free will (cleanliness +80) (profound thoughts +5). After the shower, you stumble downstairs for some breakfast."
+right <- "Nothing says carpe diem like a shower of perfect temperature, you take your time getting as clean as possible (cleanliness +100) (complacency +10). However, now you are running slightly late, you hastily run down the stairs for breakfast but you trip and get knocked out for several hours. The warm shower made you complacent, and your moment of hubris and lapse in judgement has caused you to miss the meeting. Game over."
+breakfast <- "Variety is important to you and you take full advantage of the consumer society in which we live. Consequently, your kitchen is fully stocked with all the food a person of sophistication like yourself could desire. But no experimenting this morning, you decide to make something tried and tested. What do you make?"
+breakfast_choice <- c("Cereal","Coffee and Toast","Full English Breakfast","Something Continental","Porridge")
+cereal <- "Unfortunately, the only cereal you had was plain cornflakes, you gulp it down with some milk (nourishment +50). Nothing interesting happens during breakfast. After tidying up, you get ready and decide to head out."
+coffeetoast <- "You've read somewhere in the news that having coffee in the morning is healthy or something. You make your favourite brew and use it to wash down some toast (with your preferred spread on top obviously) and it was delicious (nourishment +50) (alertness +100). After tidying up, you get ready and decide to head out."
+fullenglish <- "A full English breakfast is clearly the best choice as far as breakfast goes, you skilfully cook up all the ingredients (cooking +1) and before you know it breakfast is over (nourishment +100). After tidying up, you get ready and decide to head out."
+continental <- "Since you are not happy with the current Brexit situation, you've wisely decided to stock up on croissants in the event that the UK detachs from Europe and floats off into the Atlantic. You find some croissants in the corner of your stashing shelf and you put it straight into your mouth. Unfortunately, you soon discover that the croissants were sabotaged by a Frenchman, you spend the rest of the day recovering in the bathroom. You missed the meeting. Game over."
+porridge <- "\"If porridge oats can feed a horse, then it can certainly feed me.\" You thought to yourself. You were adding hot water to your porridge when you suddenly realised the true meaning of life was not the meaningless pursuit of happiness, but is in fact to embrace the forthright struggle which constitutes the essence of the human condition (profound thoughts +10). You skip breakfast and decide to head out."
+travel <- "You leave the house and walk to the car, it is a cold day and your car window is completely fogged up. Since you're so early this morning, you have a choice: stay to defrost the car, or get the train instead. What do you choose?"
+travel_choice <- c("Car","Train")
+train <- "You walk to the train station, it was a lovely morning. On your way you meet Horace, the friendly horse that wanders in your area. Since you were a child, you seemed to have an affinity with animals, Horace is looking straight at you with his horsey eyes. What do you do?"
+train_choice <- c("Pet the horse", "Look in to his eyes", "To the trains")
+pet_success <- "You gently pet Horace. What a majestic animal, you thought. In that instant you were seized with envy, how you longed to gallop into the sunrise! Towards the horizon, towards your dreams, towards that better tomorrow. It was then that Horace lowered his head, signalling for you to ride him. Do you accept the offer?"
+pet_fail <- "You approach to pet the horse. Horace looks at you questioningly. What an enigmatic animal, you thought. What does it know? Does it know what it means to dance? Alas these are questions we will never answer. You continue on your way to the trains."
+eyes_success <- "You look deeply into his eyes, and Horace looks deeply into you. In that moment you established an understanding with the animal (horse whisperer +5), you have both experienced pain and sacrifice, and the only escape is not to run away into the sunrise, never looking back. For that is not running away, it is instead the welcome acceptance into the knowing and warm embrace of time, the unprejudiced father of our mortal fate! (profound thoughts +42) It was then that Horace lowered his head, signalling for you to ride him. Do you accept the offer?"
+eyes_fail <- "You stare blankly at the beady black eye, you saw nothing but the darkness that looms upon the end of days, the great dying of the light. You are overwhelmed with a profound sadness. Horace turns away from you and you both continue on your ways."
+gtfohorace <- "Time waits for no one, and there is no time in life for excessive subtlety and sentimentality. You acknowledge Horace but you do not stop to greet the beast, you continue to the trains."
+ride_choice <- c("Accept the offer","Decline the offer")
+rideyes <- "You leap atop Horace, even without a saddle, you do so effortlessly and with grace. Horace rears his head and sets off in a sprint. You ride away into the sunrise. As you arrive in the office at a steady trot, your manager immediately gives you a raise. The meeting went perfectly, since everyone looked in awe as you delivered your great speech atop your steed, applause rang out across the world. The End."
+rideno <- "You decline the offer, for the path through life should be walked and it should be walked alone. You walk into the sunrise. Did you make the meeting in the end? It did not matter either way, for you have finally found your path, your calling to the kingdom upon the hill. The End."
+station <- "When you arrive at the train station, you find that all trains have been hopelessly delayed or cancelled. That was the last time you ever placed faith upon the national rail network. When you finally arrived at the office, the meeting was already over, you cry in despair. Game over."
+car <- "You had plenty of time to defrost the car, but it took no time at all. Soon you're on your way. You know that there are roadworks on your route, but since you're so early this morning you could risk it for a biscuit. Presently, the GPS lady draws out a new route for you to follow, what do you do?"
+car_choice <- c("Trust in GPS lady", "Risk it for a biscuit")
+biscuit <- "As you wait in the traffic, you realise that you have made a terrible mistake. You wondered where you went wrong. When you arrived, the meeting was already in commencement, and you had missed the timeslot for your speech. You are thoroughly disappointed. Game over."
+radio <- "You trust your GPS and let yourself be guided by the orbiting guardians in the sky. The road is long and calm, your mind starts to wander towards the countryside, which beckons at you through your car windows. Turn on the radio?"
+radio_choice <- c("Yes","No")
+radioyes <- "You listen and tap along to the radio which happened to play your favourite song - Let It Go from the critically acclaimed Disney animated movie Frozen, and you merrily arrive at the office. The meeting goes smoothly and at the end of the day, you have a biscuit to celebrate. You did it. The End."
+radiono_good <- "Music is a frivolous distraction of those lacking an inner dialogue, you rationalised to yourself. Despite the calmness, you managed to stay awake since you had a coffee. You were sharp and alert when you arrived and you delivered a very serious speech during the meeting. At the end of the day, you sighed and wondered how the day would have been if you made different choices, but nonetheless, you had done it. The End."
+radiono_bad <- "You slowly start drifting off since you woke up so early and did not have coffee, you crash through several hedgerows before coming to rest in a field of cows. Your car is busted and you won't be making it to the meeting. Game over."
+```
+
+##### ui.R
+```{r}
+ui <- fluidPage(
+	fluidRow(
+		column(2),
+		column(8,
+			wellPanel(
+				textOutput("storytext"),
+				br(),
+				fluidRow(
+					column(12, align="center", uiOutput("choicedialog")),
+					column(12, align="center", uiOutput("button"))
+				)
+			)
+		),
+		column(2)
+	)
+)
+```
+
+##### server.R
+```{r}
+server <- function(input, output, session) {
+  # Reactive values for story stages and stats
+  currentstage <- reactiveVal("start")
+  nextstage <- reactiveVal("shower")
+  alertness <- reactiveVal(0)
+  thoughts <- reactiveVal(0)
+
+  observeEvent(input$go, {
+    # Takes story stage, choice taken and stats and returns the next stage.
+    if (currentstage() == "start") {
+      nextstage("shower")
+    } else if (currentstage() == "shower") {
+      # Choices for shower
+      req(input$choice)
+      if (input$choice == "A bit too hot") {
+        nextstage("hot")
+      }
+      else if (input$choice == "Icy cold") {
+        thoughts(thoughts() + 5) # Update thoughts
+        nextstage("cold")
+      }
+      else if (input$choice == "Just right") {
+        nextstage("right")
+      }
+    } else if (currentstage() %in% c("hot","cold")) {
+      nextstage("breakfast")
+    } else if (currentstage() == "breakfast") {
+      # Choices for breakfast
+      req(input$choice)
+      if (input$choice == "Cereal") {
+        nextstage("cereal")
+      } else if (input$choice == "Coffee and Toast") {
+        alertness(alertness() + 100) # Update alertness
+        nextstage("coffeetoast")
+      } else if (input$choice == "Full English Breakfast") {
+        nextstage("fullenglish")
+      } else if (input$choice == "Something Continental") {
+        nextstage("continental")
+      } else if (input$choice == "Porridge") {
+        thoughts(thoughts() + 10) # Update thoughts
+        nextstage("porridge")
+      }
+    } else if (currentstage() %in% c("cereal","coffeetoast","fullenglish","porridge")) {
+      nextstage("travel")
+    } else if (currentstage() == "travel") {
+      # Choices for travel
+      req(input$choice)
+      if (input$choice == "Car") {
+        nextstage("car")
+      } else if (input$choice == "Train") {
+        nextstage("train")
+      }
+    } else if (currentstage() == "train") {
+      # Choices for train
+      req(input$choice)
+      if (input$choice == "Pet the horse") {
+        # Stat check thoughts
+        if (thoughts() >= 15) {
+          nextstage("pet_success")
+        } else {
+          nextstage("pet_fail")
+        }
+      } else if (input$choice == "Look in to his eyes") {
+        # Stat check thoughts
+        if (thoughts() >= 15) {
+          nextstage("eyes_success")
+        } else {
+          nextstage("eyes_fail")
+        }
+      } else if (input$choice == "To the trains") {
+        nextstage("gtfohorace")
+      }
+    } else if (currentstage() %in% c("pet_fail","eyes_fail", "gtfohorace")) {
+      # Train choice fails
+      nextstage("station")
+    } else if (currentstage() %in% c("pet_success","eyes_success")) {
+      # Choices for riding
+      req(input$choice)
+      if (input$choice == "Accept the offer") {
+        nextstage("rideyes")
+      } else if (input$choice == "Decline the offer") {
+        nextstage("rideno")
+      }
+    } else if (currentstage() == "car") {
+      # Choices for car
+      req(input$choice)
+      if (input$choice == "Trust in GPS lady") {
+        nextstage("radio")
+      } else if (input$choice == "Risk it for a biscuit") {
+        nextstage("biscuit")
+      }
+    } else if (currentstage() == "radio") {
+      # Choices for radio
+      req(input$choice)
+      if (input$choice == "Yes") {
+        nextstage("radioyes")
+      } else if (input$choice == "No") {
+        # Stat check alertness
+        if (alertness() >= 100) {
+          nextstage("radiono_good")
+        } else {
+          nextstage("radiono_bad")
+        }
+      }
+    }
+    currentstage(nextstage()) # Move to next story stage
+  })
+
+  # Restart to start
+  observeEvent(input$restart, {
+    currentstage("start")
+    nextstage("shower")
+    alertness(0)
+    thoughts(0)
+  })
+
+  # Displays selection UI when choices available
+  output$choicedialog <- renderUI({
+    if (currentstage() %in% c("shower","breakfast","travel","train","pet_success","eyes_success","car","radio")) {
+      selectizeInput("choice", "Select your choice",
+                     choices = c(selectionchoices()),
+                     width = "250px",
+                     options = list(placeholder = 'Please select an option below',
+                                    onInitialize = I('function() { this.setValue(""); }'))
+      )
+    }
+  })
+
+  # Updates choices as story stage changes
+  # Choice variables are vectors (not shown)
+  selectionchoices <- reactive({
+    if (currentstage() == "shower") {
+      shower_choice
+    } else if (currentstage() == "breakfast") {
+      breakfast_choice
+    } else if (currentstage() == "travel") {
+      travel_choice
+    } else if (currentstage() == "train") {
+      train_choice
+    } else if (currentstage() %in% c("pet_success","eyes_success")) {
+      ride_choice
+    } else if (currentstage() == "car") {
+      car_choice
+    } else if (currentstage() == "radio") {
+      radio_choice
+    } else {
+      c("NA")
+    }
+  })
+
+  # Display restart button on ending stages, otherwise next
+  output$button <- renderUI({
+    if (currentstage() %in% c("right","continental","rideyes","rideno","station","biscuit","radioyes","radiono_good","radiono_bad")) {
+      actionButton("restart","Play again")
+    } else {
+      actionButton("go","Next")
+    }
+  })
+
+  # Chooses the text to display given the story stage
+  # Variables are text string (not shown)
+  output$storytext <- renderText({
+    if (currentstage() == "start") {
+      "Press next to continue."
+    } else if (currentstage() == "shower") {
+      shower
+    } else if (currentstage() == "hot") {
+      hot
+    } else if (currentstage() == "cold") {
+      cold
+    } else if (currentstage() == "right") {
+      right
+    } else if (currentstage() == "breakfast") {
+      breakfast
+    } else if (currentstage() == "cereal") {
+      cereal
+    } else if (currentstage() == "coffeetoast") {
+      coffeetoast
+    } else if (currentstage() == "fullenglish") {
+      fullenglish
+    } else if (currentstage() == "continental") {
+      continental
+    } else if (currentstage() == "porridge") {
+      porridge
+    } else if (currentstage() == "travel") {
+      travel
+    } else if (currentstage() == "train") {
+      train
+    } else if (currentstage() == "pet_success") {
+      pet_success
+    } else if (currentstage() == "pet_fail") {
+      pet_fail
+    } else if (currentstage() == "eyes_success") {
+      eyes_success
+    } else if (currentstage() == "eyes_fail") {
+      eyes_fail
+    } else if (currentstage() == "gtfohorace") {
+      gtfohorace
+    } else if (currentstage() == "rideyes") {
+      rideyes
+    } else if (currentstage() == "rideno") {
+      rideno
+    } else if (currentstage() == "station") {
+      station
+    } else if (currentstage() == "car") {
+      car
+    } else if (currentstage() == "biscuit") {
+      biscuit
+    } else if (currentstage() == "radio") {
+      radio
+    } else if (currentstage() == "radioyes") {
+      radioyes
+    } else if (currentstage() == "radiono_good") {
+      radiono_good
+    } else if (currentstage() == "radiono_bad") {
+      radiono_bad
+    } else {
+      "Error, stage not found."
+    }
+  })
+}
+```
+
+```{r, echo=F, eval=T}
+shinyApp(ui = ui, server = server)
+```
+
+Reactive values are very useful in keep tracking of the state of your app, allows us to create events specific to/dependent on the current state. We used 4 reactive values in this example, but instead of using **reactiveVal**, we could have defined them all at once with **reactiveValues**, which essentially allows us to define our reactive values in some vector *v*, which we can reference using **v$**. Take note also of how new values are assigned to reactive values.
+
+If we were paying close attention to the code, we will have noticed the use of **selectizeInput**, this is similar to **selectInput** but it has an extra *options* option which allows us to specify custom behaviour using JavaScript (jQuery). There are plenty of places around Shiny where you can use JavaScript to enhance functionality, but that is sadly beyond the scope of this course (since I've yet to find them all), it will be up to you to experiment.
+
+### 5.4 Summary
+
+So to summarise, these are the common reactive functions which we've covered:
+
+- **observe** - (re)executes expressions automatically when one or more dependencies change;
+
+- **observeEvent** - (re)executes expressions after specified dependencies/events have changed/triggered;
+
+- **reactive** - similar to **observe** but used as a callable function within Server;
+
+- **reactiveVal** - creates a reactive object within Server;
+
+- **reactiveValues** - creates a "vector" of reactive objects within Server;
+
+- **isolate** - used to inside reactive functions to remove dependency on specific reactive sources.
+
+---
+
+## 6 Leaflet
+
+Let's look at something more eye-catching and practical - the Leaflet mapping package. It is well integrated with Shiny and there are lots of cool things you can do, here we will only look at a brief demonstration where we will make an interactive leaflet map showing all the airports around the world. There are plenty of examples online and feel free also to check out the Croatia FTS Shiny App, which also uses Leaflet in Shiny to draw markers and heatmaps of sector conflicts.
+
+##### global.R
+```{r}
+library(leaflet)
+library(data.table)
+
+# Importing dataset from web and saving locally
+# airport_data <- fread("http://ourairports.com/data/airports.csv", encoding = 'UTF-8')
+# write.csv(airport_data, file="~/airports.csv", row.names=F)
+
+# Import local dataset
+# setwd(paste(dirname(rstudioapi::getSourceEditorContext()$path)))
+airport_data <- fread("airports.csv", encoding = 'UTF-8')
+
+# Filter out invalid airports
+airport_data <- subset(
+  airport_data,
+  !(grepl(paste(c("34S","23R","Duplicate","Dulpicate","Illuminati","LOTTERY"), collapse = "|"), name)) &
+  !(name %in% c("Newcastle","Sanford Fargo Medical Center Heliport","Entz Arts Airport")) &
+  !(as.numeric(as.character(longitude_deg)) >= -3.5 &
+    as.numeric(as.character(longitude_deg)) <= 3.5 &
+    as.numeric(as.character(latitude_deg)) >= -3.5 &
+    as.numeric(as.character(latitude_deg)) <= 3.5)
+)
+
+# Correct airports with wrong continent
+airport_data$continent[airport_data$name == "Dana Heliport"] <- "NA"
+airport_data$continent[airport_data$name == "RNAS Pembroke/RNAS Milton/RAF Carew Cheriton"] <- "EU"
+```
+
+##### ui.R
+```{r}
+ui <- fillPage(
+  # This is custom CSS, we'll cover this in the next section.
+  tags$head(
+    tags$style("
+      .container {
+        position: absolute;
+        top: 5px;
+        left: 10px;
+        width: 140px;
+        height: 420px;
+        background-color: rgb(250,250,250);
+        background-color: rgba(250,250,250,0.8);
+      	border: 1px solid silver;
+      	border-radius: 5px;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        transition-duration: 200ms;
+      }
+      .container:hover {
+        background-color: rgb(250,250,250);
+        transition-duration: 200ms;
+      }
+    ")
+  ),
+  # Leaflet maps have a special output element "leafletOutput".
+  leafletOutput("map", height = "100%"),
+  div(class = "container", fixedPanel(
+    checkboxGroupInput("type", "Airport type", width = 120,
+                       choiceNames = c("Large airport", "Medium airport", "Small airport",
+                                       "Heliport", "Balloonport", "Seaplane base", "Closed"),
+                       choiceValues = c("large_airport", "medium_airport", "small_airport",
+                                        "heliport", "balloonport", "seaplane_base", "closed")),
+    checkboxGroupInput("continent", "Continents", width = 120,
+                       choiceNames = c("North America","South America","Europe",
+                                       "Africa","Asia","Oceania","Antarctica"),
+                       choiceValues = c("NA","SA","EU","AF","AS","OC","AN")),
+    top = 10,
+    left = 20
+  ))
+)
+```
+
+##### server.R
+```{r}
+server <- function(input, output) {
+  output$map <- renderLeaflet({
+    # Here we initialise the leaflet map and add tiles, along with option to toggle between them.
+    leaflet(options=leafletOptions(zoomControl=F)) %>%
+      setView(lng = 0, lat = 0, zoom = 2) %>%
+      addProviderTiles(providers$CartoDB.DarkMatter,
+                       options=providerTileOptions(noWrap=TRUE), group="Dark") %>%
+      addProviderTiles(providers$CartoDB.Positron,
+                       options=providerTileOptions(noWrap=TRUE), group="Grey") %>%
+      addProviderTiles(providers$Esri.WorldImagery,
+                       options=providerTileOptions(noWrap=TRUE), group="Satellite") %>%
+      addLayersControl(baseGroups=c("Dark","Grey","Satellite"),
+                       options=layersControlOptions(collapsed=T))
+  })
+
+  observe({
+    # Subset data based on selection
+    dat <- subset(airport_data, type %in% input$type & continent %in% input$continent)
+
+    # Avoid crash due invalid label when no data is selected
+    if (dim(dat)[1] != 0 & dim(dat)[2] != 0) {
+      lab <- sprintf("<b>Name</b>: %s<br/><b>IATA code</b>: %s<br/><b>Elevation (ft)</b>: %s",
+                     dat$name, dat$iata_code, dat$elevation_ft) %>% lapply(htmltools::HTML)
+    } else {
+      lab <- NULL
+    }
+
+    # Creates a palette function mapping airport type to colours
+    typepal <- colorFactor(palette = c("black","grey","green","red","orange","blue","yellow"),
+                           domain = unique(airport_data$type))
+
+    # leafletProxy is used to modify an existing map without redrawing the whole map each time.
+    leafletProxy("map", data = dat) %>% clearGroup("airports") %>% removeControl("legend") %>%
+      addCircleMarkers(lng = ~longitude_deg,
+                       lat = ~latitude_deg,
+                       color = ~typepal(type),
+                       label = lab,
+                       labelOptions = labelOptions(opacity = 0.8,
+                                                   textsize = "12px",
+                                                   direction = "auto"),
+                       radius = 5,
+                       stroke = F,
+                       fillOpacity = 0.6,
+                       group = "airports") %>%
+      addLegend(labels = c("Large airport", "Medium airport", "Small airport",
+                           "Heliport", "Balloonport", "Seaplane base", "Closed"),
+                colors = c("red","orange","yellow",
+                           "green","black","blue","grey"),
+                title = "Airport Type",
+                position = "bottomleft",
+                opacity = 0.8,
+                layerId = "legend")
+
+  })
+}
+```
+
+```{r, echo=F, eval=T}
+shinyApp(ui = ui, server = server,options = list(height = 750))
+```
+
+---
+
+## 7 CSS UI Customisation
+
+In this final chapter we will attempt to master the art and science of graphical user interface engineering. The GUI forms the keystone in the medium of human-computer interaction for the synthesis of form and function, the need for CSS in graphical web design is essential for the maximisation of usability, accessibility, user experience and pleasure, lest we sink to the endless depths of aesthetic poverty - a hellish domain for the human soul. However, the intricacies of the creative process cannot be easily conveyed via text, I can but merely hand you the keys to unlock that potential, of which only you alone can attain.
+
+There are many ways of adding CSS styles to your UI elements - using predefined themes, directly for each specific UI, using an internal style sheet, or using an external style sheet.
+
+### 7.1 Predefined Themes
+
+So far we've only used the default bootstrap theme, if we're feeling lazy we can install the **shinythemes** package and define new themes by:
+
+```{r, eval = F}
+ui <- fluidPage(
+  # You can either use a predefined shiny theme:
+  theme = shinytheme("cerulean")
+  # Or using custom theme in your www folder:
+  theme = "suchthemeverystyle.css"
+)
+```
+
+Be sure to refer to the relevant link in section 10 for a list of all the **shinythemes** that are available.
+
+### 7.2 Direct Styling
+
+Enclose your UI element in a **div** container and enter your CSS in the *style* option:
+
+```{r}
+ui <- fluidPage(
+  div(style = "background-color:green; width:50%; margin:auto; text-align:center",
+      uiOutput("veryui"))
+)
+
+server <- function(input, output) {
+  output$veryui <- renderUI({
+    # You can style UI elements specified in Server as well:
+    div(style = "border-style:dashed; border-width:2px 4px 6px 8px", textOutput("suchtext"))
+  })
+  output$suchtext <- renderText("This is a div")
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 50))
+```
+
+### 7.3 Internal Style Sheet
+
+Specify a header using **tags\$head** section in your UI and insert your style sheet under **tags\$style**, meaning we could have written the above as:
+
+```{r, eval=F}
+ui <- fluidPage(
+  tags$head(
+    tags$style("
+      #veryui {
+        background-color: green;
+        width: 50%;
+        margin: auto;
+        text-align: center;
+      }
+      #suchtext {
+        border-style: dashed;
+        border-width: 2px 4px 6px 8px;
+      }
+    ")
+  ),
+  uiOutput("veryui")
+)
+
+server <- function(input, output) {
+  output$veryui <- renderUI({
+    textOutput("suchtext")
+  })
+  output$suchtext <- renderText("This is a div")
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 50))
+```
+
+Notice that if we specify the ID of the CSS tags to be the same as the output elements we specified, they will automatically use the styles we defined. Otherwise you will need to link tags manually like so:
+
+```{r, eval=F}
+ui <- fluidPage(
+  tags$head(
+    tags$style("
+      .verystyle {
+        background-color: green;
+        width: 50%;
+        margin: auto;
+        text-align: center;
+      }
+      #suchborder {
+        border-style: dashed;
+        border-width: 2px 4px 6px 8px;
+      }
+    ")
+  ),
+  div(class = "verystyle", uiOutput("veryui"))
+)
+
+server <- function(input, output) {
+  output$veryui <- renderUI({
+    div(id = "suchborder", textOutput("suchtext"))
+  })
+  output$suchtext <- renderText("This is a div")
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 50))
+```
+
+The advantage of this approach is that we can style many different elements identically using the same CSS tags. Each element can also be styled using both a class tag and an ID tag, giving us the ability to define element specific styles using ID whilst inheriting common styles from class.
+
+### 7.4 External Style Sheet
+
+If you have an extensive list of CSS tags defined, you may prefer to use an external style sheet, making sure you put it in the **www** folder of your app:
+
+##### app.R
+```{r, eval=F}
+ui <- fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "mystyles.css")
+  ),
+  div(class = "verystyle", uiOutput("veryui"))
+)
+
+server <- function(input, output) {
+  output$veryui <- renderUI({
+    div(id = "suchborder", textOutput("suchtext"))
+  })
+  output$suchtext <- renderText("This is a div")
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 50))
+```
+
+##### www/mystyles.css
+
+<div class="well", style="border-color: silver;"><font face="Courier New" size="3" color="black">
+.verystyle {<br>
+  <div class="indent">background-color: green;</div>
+  <div class="indent">width: 50%;</div>
+  <div class="indent">margin: auto;</div>
+  <div class="indent">text-align: center;</div>
+}<br>
+#suchborder {<br>
+  <div class="indent">border-style: dashed;</div>
+  <div class="indent">border-width: 2px 4px 6px 8px;</div>
+}</font></div>
+
+Make sure to check out the CSS tutorial website linked in section 10 for further details regarding the usage of CSS.
+
+---
+
+## 8 Useful Links
+
+- ggplot2 Examples: http://r-statistics.co/Top50-Ggplot2-Visualizations-MasterList-R-Code.html
+
+- Leaflet for R: https://rstudio.github.io/leaflet/
+
+- Magrittr Pipe Operator (%>%): https://magrittr.tidyverse.org/
+
+- Plotly for R Examples: https://plot.ly/r/
+
+- Shiny Cheat Sheet: https://shiny.rstudio.com/images/shiny-cheatsheet.pdf
+
+- Shiny Gallery: https://shiny.rstudio.com/gallery/
+
+- Shiny Help Articles: https://shiny.rstudio.com/articles/
+
+- Shiny Quick Reference: https://shiny.rstudio.com/reference/shiny/1.2.0/
+
+- Shiny Themes: https://rstudio.github.io/shinythemes/
+
+- W3Schools CSS Tutorial: https://www.w3schools.com/css/
+
+- W3Schools JavaScript Tutorial: https://www.w3schools.com/js/
+
+- W3Schools jQuery Tutorial: https://www.w3schools.com/jquery/
