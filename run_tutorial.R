@@ -8,3 +8,4 @@
 # cd ~/Shiny\ Tutorial
 
 rmarkdown::run("Shiny Crash Course.Rmd", shiny_args=list(host="0.0.0.0", port=8001))
+
